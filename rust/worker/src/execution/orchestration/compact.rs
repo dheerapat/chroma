@@ -607,6 +607,7 @@ impl CompactOrchestrator {
 
                 if let Some(dimension) = collection.dimension {
                     let hnsw_segment_writer = match DistributedHNSWSegmentWriter::from_segment(
+                        collection,
                         &hnsw_segment,
                         dimension as usize,
                         hnsw_provider,

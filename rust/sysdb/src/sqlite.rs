@@ -7,13 +7,13 @@ use chroma_sqlite::db::SqliteDb;
 use chroma_sqlite::helpers::{delete_metadata, get_embeddings_queue_topic_name, update_metadata};
 use chroma_sqlite::table;
 use chroma_types::{
-    Collection, CollectionAndSegments, CollectionMetadataUpdate, CollectionUuid,
-    CreateCollectionError, CreateCollectionResponse, CreateDatabaseError, CreateDatabaseResponse,
-    CreateTenantError, CreateTenantResponse, Database, DeleteCollectionError, DeleteDatabaseError,
-    DeleteDatabaseResponse, GetCollectionWithSegmentsError, GetCollectionsError, GetDatabaseError,
-    GetSegmentsError, GetTenantError, GetTenantResponse, ListDatabasesError, Metadata,
-    MetadataValue, ResetError, ResetResponse, Segment, SegmentScope, SegmentType, SegmentUuid,
-    UpdateCollectionError,
+    Collection, CollectionAndSegments, CollectionConfiguration, CollectionMetadataUpdate,
+    CollectionUuid, CreateCollectionError, CreateCollectionResponse, CreateDatabaseError,
+    CreateDatabaseResponse, CreateTenantError, CreateTenantResponse, Database,
+    DeleteCollectionError, DeleteDatabaseError, DeleteDatabaseResponse,
+    GetCollectionWithSegmentsError, GetCollectionsError, GetDatabaseError, GetSegmentsError,
+    GetTenantError, GetTenantResponse, ListDatabasesError, Metadata, MetadataValue, ResetError,
+    ResetResponse, Segment, SegmentScope, SegmentType, SegmentUuid, UpdateCollectionError,
 };
 use futures::TryStreamExt;
 use sea_query_binder::SqlxBinder;
@@ -237,11 +237,13 @@ impl SqliteSysDb {
         collection_id: CollectionUuid,
         name: String,
         segments: Vec<Segment>,
-        configuration_json: serde_json::Value,
+        configuration: Option<CollectionConfiguration>,
         metadata: Option<Metadata>,
         dimension: Option<i32>,
         get_or_create: bool,
     ) -> Result<CreateCollectionResponse, CreateCollectionError> {
+        let configuration = configuration.unwrap_or(CollectionConfiguration::default_single_node());
+
         let mut tx = self
             .db
             .get_conn()
@@ -298,10 +300,7 @@ impl SqliteSysDb {
         )
         .bind(collection_id.to_string())
         .bind(&name)
-        .bind(
-            serde_json::to_string(&configuration_json)
-                .map_err(CreateCollectionError::Configuration)?,
-        )
+        .bind(serde_json::to_string(&configuration).map_err(CreateCollectionError::Configuration)?)
         .bind(dimension)
         .bind(database_id)
         .execute(&mut *tx)
@@ -333,7 +332,7 @@ impl SqliteSysDb {
             name,
             tenant,
             database,
-            configuration_json,
+            configuration,
             metadata,
             dimension,
             log_position: 0,
@@ -668,19 +667,22 @@ impl SqliteSysDb {
                 let metadata = self.metadata_from_rows(rows.iter());
                 let first_row = rows.first().unwrap();
 
-                let configuration_json = match first_row.get::<Option<&str>, _>(2) {
-                    Some(json_str) => match serde_json::from_str::<serde_json::Value>(json_str)
-                        .map_err(GetCollectionsError::Configuration)
-                    {
-                        Ok(configuration_json) => configuration_json,
-                        Err(e) => return Some(Err(e)),
-                    },
-                    None => serde_json::Value::Object(Default::default()),
+                // todo: migrate config?
+                let configuration = match first_row.get::<Option<&str>, _>(2) {
+                    Some(json_str) => {
+                        match serde_json::from_str::<CollectionConfiguration>(json_str)
+                            .map_err(GetCollectionsError::Configuration)
+                        {
+                            Ok(configuration) => configuration,
+                            Err(e) => return Some(Err(e)),
+                        }
+                    }
+                    None => CollectionConfiguration::default_single_node(),
                 };
 
                 Some(Ok(Collection {
                     collection_id,
-                    configuration_json,
+                    configuration,
                     metadata,
                     total_records_post_compaction: 0,
                     version: 0,
@@ -1096,7 +1098,7 @@ mod tests {
                 collection_id,
                 "test_collection".to_string(),
                 segments.clone(),
-                serde_json::Value::Null,
+                None,
                 Some(collection_metadata.clone()),
                 None,
                 false,
@@ -1136,7 +1138,7 @@ mod tests {
                 collection_id,
                 "test_collection".to_string(),
                 segments.clone(),
-                serde_json::Value::Null,
+                None,
                 None,
                 None,
                 false,
@@ -1153,7 +1155,7 @@ mod tests {
                 collection_id,
                 "test_collection".to_string(),
                 segments,
-                serde_json::Value::Null,
+                None,
                 None,
                 None,
                 false,
@@ -1183,7 +1185,7 @@ mod tests {
                 collection_id,
                 "test_collection".to_string(),
                 segments.clone(),
-                serde_json::Value::Null,
+                None,
                 None,
                 None,
                 false,
@@ -1200,7 +1202,7 @@ mod tests {
                 CollectionUuid::new(),
                 "test_collection".to_string(),
                 vec![],
-                serde_json::Value::Null,
+                None,
                 None,
                 None,
                 true,
@@ -1223,7 +1225,7 @@ mod tests {
                 collection_id,
                 "test_collection".to_string(),
                 vec![],
-                serde_json::Value::Null,
+                None,
                 None,
                 None,
                 false,
@@ -1275,7 +1277,7 @@ mod tests {
                 collection_id,
                 "test_collection".to_string(),
                 vec![],
-                serde_json::Value::Null,
+                None,
                 None,
                 None,
                 false,
@@ -1353,7 +1355,7 @@ mod tests {
                 collection_id,
                 "test_collection".to_string(),
                 segments.clone(),
-                serde_json::Value::Null,
+                None,
                 Some(collection_metadata.clone()),
                 None,
                 false,
@@ -1403,7 +1405,7 @@ mod tests {
                 collection_id,
                 "test_collection".to_string(),
                 segments.clone(),
-                serde_json::Value::Null,
+                None,
                 Some(collection_metadata.clone()),
                 None,
                 false,

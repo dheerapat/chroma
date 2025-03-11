@@ -1,10 +1,10 @@
 use crate::{
-    Collection, CollectionAndSegments, CollectionUuid, DocumentExpression, DocumentOperator,
-    LogRecord, MetadataExpression, MetadataValue, Operation, OperationRecord, PrimitiveOperator,
-    ScalarEncoding, Segment, SegmentType, SegmentUuid, UpdateMetadata, UpdateMetadataValue, Where,
+    Collection, CollectionAndSegments, CollectionConfiguration, CollectionUuid, DocumentExpression,
+    DocumentOperator, LogRecord, MetadataExpression, MetadataValue, Operation, OperationRecord,
+    PrimitiveOperator, ScalarEncoding, Segment, SegmentType, SegmentUuid, UpdateMetadata,
+    UpdateMetadataValue, Where,
 };
 use proptest::{collection, prelude::*};
-use serde_json::Value;
 
 /**
  * Strategy for metadata.
@@ -211,7 +211,7 @@ impl Arbitrary for TestCollectionData {
                     collection: Collection {
                         collection_id,
                         name: PROP_COLL.to_string(),
-                        configuration_json: Value::Null,
+                        configuration: CollectionConfiguration::default_single_node(),
                         metadata: None,
                         dimension: Some(3),
                         tenant: PROP_TENANT.to_string(),

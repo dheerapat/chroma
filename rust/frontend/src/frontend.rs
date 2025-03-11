@@ -21,16 +21,15 @@ use chroma_types::{
     CreateTenantError, CreateTenantRequest, CreateTenantResponse, DeleteCollectionError,
     DeleteCollectionRecordsError, DeleteCollectionRecordsRequest, DeleteCollectionRecordsResponse,
     DeleteCollectionRequest, DeleteDatabaseError, DeleteDatabaseRequest, DeleteDatabaseResponse,
-    DistributedHnswParameters, GetCollectionError, GetCollectionRequest, GetCollectionResponse,
-    GetCollectionsError, GetDatabaseError, GetDatabaseRequest, GetDatabaseResponse, GetRequest,
-    GetResponse, GetTenantError, GetTenantRequest, GetTenantResponse, HealthCheckResponse,
-    HeartbeatError, HeartbeatResponse, Include, ListCollectionsRequest, ListCollectionsResponse,
-    ListDatabasesError, ListDatabasesRequest, ListDatabasesResponse, Metadata, Operation,
-    OperationRecord, QueryError, QueryRequest, QueryResponse, ResetError, ResetResponse,
-    ScalarEncoding, Segment, SegmentScope, SegmentType, SegmentUuid, SingleNodeHnswParameters,
-    UpdateCollectionError, UpdateCollectionRecordsError, UpdateCollectionRecordsRequest,
-    UpdateCollectionRecordsResponse, UpdateCollectionRequest, UpdateCollectionResponse,
-    UpdateMetadata, UpdateMetadataValue, UpsertCollectionRecordsError,
+    GetCollectionError, GetCollectionRequest, GetCollectionResponse, GetCollectionsError,
+    GetDatabaseError, GetDatabaseRequest, GetDatabaseResponse, GetRequest, GetResponse,
+    GetTenantError, GetTenantRequest, GetTenantResponse, HealthCheckResponse, HeartbeatError,
+    HeartbeatResponse, Include, ListCollectionsRequest, ListCollectionsResponse,
+    ListDatabasesError, ListDatabasesRequest, ListDatabasesResponse, Operation, OperationRecord,
+    QueryError, QueryRequest, QueryResponse, ResetError, ResetResponse, ScalarEncoding, Segment,
+    SegmentScope, SegmentType, SegmentUuid, UpdateCollectionError, UpdateCollectionRecordsError,
+    UpdateCollectionRecordsRequest, UpdateCollectionRecordsResponse, UpdateCollectionRequest,
+    UpdateCollectionResponse, UpdateMetadata, UpdateMetadataValue, UpsertCollectionRecordsError,
     UpsertCollectionRecordsRequest, UpsertCollectionRecordsResponse, Where, CHROMA_DOCUMENT_KEY,
     CHROMA_URI_KEY,
 };
@@ -415,6 +414,7 @@ impl Frontend {
             database_name,
             name,
             metadata,
+            configuration,
             get_or_create,
             ..
         }: CreateCollectionRequest,
@@ -422,16 +422,13 @@ impl Frontend {
         let collection_id = CollectionUuid::new();
         let segments = match self.executor {
             Executor::Distributed(_) => {
-                let hnsw_metadata =
-                    Metadata::try_from(DistributedHnswParameters::try_from(&metadata)?)?;
-
                 vec![
                     Segment {
                         id: SegmentUuid::new(),
                         r#type: SegmentType::HnswDistributed,
                         scope: SegmentScope::VECTOR,
                         collection: collection_id,
-                        metadata: Some(hnsw_metadata),
+                        metadata: None,
                         file_path: Default::default(),
                     },
                     Segment {
@@ -453,16 +450,13 @@ impl Frontend {
                 ]
             }
             Executor::Local(_) => {
-                let hnsw_metadata =
-                    Metadata::try_from(SingleNodeHnswParameters::try_from(&metadata)?)?;
-
                 vec![
                     Segment {
                         id: SegmentUuid::new(),
                         r#type: SegmentType::HnswLocalPersisted,
                         scope: SegmentScope::VECTOR,
                         collection: collection_id,
-                        metadata: Some(hnsw_metadata),
+                        metadata: None,
                         file_path: Default::default(),
                     },
                     Segment {
@@ -485,6 +479,7 @@ impl Frontend {
                 collection_id,
                 name,
                 segments,
+                configuration,
                 metadata,
                 None,
                 get_or_create,

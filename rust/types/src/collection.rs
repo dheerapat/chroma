@@ -1,8 +1,7 @@
 use super::{Metadata, MetadataValueConversionError};
-use crate::{chroma_proto, test_segment, Segment, SegmentScope};
+use crate::{chroma_proto, test_segment, CollectionConfiguration, Segment, SegmentScope};
 use chroma_error::{ChromaError, ErrorCodes};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use thiserror::Error;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -50,25 +49,33 @@ impl std::fmt::Display for CollectionUuid {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, ToSchema, bon::Builder)]
 #[cfg_attr(feature = "pyo3", pyo3::pyclass)]
 pub struct Collection {
+    #[builder(default)]
     #[serde(rename(serialize = "id"))]
     pub collection_id: CollectionUuid,
+    #[builder(default)]
     pub name: String,
-    #[serde(default, rename(deserialize = "configuration_json_str"))]
-    pub configuration_json: Value,
+    pub configuration: CollectionConfiguration,
     pub metadata: Option<Metadata>,
     pub dimension: Option<i32>,
+    #[builder(default)]
     pub tenant: String,
+    #[builder(default)]
     pub database: String,
+    #[builder(default = -1)]
     pub log_position: i64,
+    #[builder(default)]
     pub version: i32,
     #[serde(skip)]
+    #[builder(default)]
     pub total_records_post_compaction: u64,
     #[serde(skip)]
+    #[builder(default)]
     pub size_bytes_post_compaction: u64,
     #[serde(skip)]
+    #[builder(default)]
     pub last_compaction_time_secs: u64,
 }
 
@@ -123,7 +130,8 @@ impl Collection {
         Self {
             collection_id: CollectionUuid::new(),
             name: "test_collection".to_string(),
-            configuration_json: Value::Null,
+            // todo
+            configuration: CollectionConfiguration::default_single_node(),
             metadata: None,
             dimension: Some(dim),
             tenant: "default_tenant".to_string(),
@@ -176,7 +184,7 @@ impl TryFrom<chroma_proto::Collection> for Collection {
         Ok(Collection {
             collection_id,
             name: proto_collection.name,
-            configuration_json: serde_json::from_str(&proto_collection.configuration_json_str)?,
+            configuration: CollectionConfiguration::default_single_node(), // todo
             metadata: collection_metadata,
             dimension: proto_collection.dimension,
             tenant: proto_collection.tenant,
@@ -195,8 +203,7 @@ impl From<Collection> for chroma_proto::Collection {
         Self {
             id: value.collection_id.0.to_string(),
             name: value.name,
-            configuration_json_str: serde_json::to_string(&value.configuration_json)
-                .unwrap_or("{}".to_string()),
+            configuration_json_str: "{}".to_string(), // todo
             metadata: value.metadata.map(Into::into),
             dimension: value.dimension,
             tenant: value.tenant,

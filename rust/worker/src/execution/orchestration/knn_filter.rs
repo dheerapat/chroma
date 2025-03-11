@@ -10,7 +10,7 @@ use chroma_system::{
     wrap, ChannelError, ComponentContext, ComponentHandle, Dispatcher, Handler, Orchestrator,
     PanicError, TaskError, TaskMessage, TaskResult,
 };
-use chroma_types::{CollectionAndSegments, DistributedHnswParameters, Segment};
+use chroma_types::{CollectionAndSegments, Segment};
 use thiserror::Error;
 use tokio::sync::oneshot::{error::RecvError, Sender};
 
@@ -277,15 +277,8 @@ impl Handler<TaskResult<FilterOutput, FilterError>> for KnnFilterOrchestrator {
             None => return,
         };
 
-        let hnsw_configuration = match self.ok_or_terminate(
-            DistributedHnswParameters::try_from(&self.collection_and_segments.vector_segment)
-                .map_err(|_| KnnError::InvalidDistanceFunction),
-            ctx,
-        ) {
-            Some(hnsw_configuration) => hnsw_configuration,
-            None => return,
-        };
         let hnsw_reader = match DistributedHNSWSegmentReader::from_segment(
+            &self.collection_and_segments.collection,
             &self.collection_and_segments.vector_segment,
             collection_dimension as usize,
             self.hnsw_provider.clone(),
@@ -302,6 +295,16 @@ impl Handler<TaskResult<FilterOutput, FilterError>> for KnnFilterOrchestrator {
                 return;
             }
         };
+
+        let hnsw_configuration = self
+            .collection_and_segments
+            .collection
+            .configuration
+            .get_distributed_hnsw_config_with_legacy_fallback(
+                &self.collection_and_segments.vector_segment,
+            )
+            .unwrap(); // todo
+
         let output = KnnFilterOutput {
             logs: self
                 .fetched_logs

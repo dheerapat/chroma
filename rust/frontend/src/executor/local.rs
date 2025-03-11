@@ -15,7 +15,7 @@ use chroma_types::{
         Projection, ProjectionRecord, RecordDistance,
     },
     plan::{Count, Get, Knn},
-    CollectionAndSegments, CollectionUuid, ExecutorError, HnswSpace, SingleNodeHnswParameters,
+    CollectionAndSegments, CollectionUuid, ExecutorError, HnswSpace,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -102,6 +102,7 @@ impl LocalExecutor {
                 let hnsw_reader = self
                     .hnsw_manager
                     .get_hnsw_reader(
+                        &collection_and_segments.collection,
                         &collection_and_segments.vector_segment,
                         dimensionality as usize,
                     )
@@ -163,6 +164,7 @@ impl LocalExecutor {
             let hnsw_reader = self
                 .hnsw_manager
                 .get_hnsw_reader(
+                    &collection_and_segments.collection,
                     &collection_and_segments.vector_segment,
                     dimensionality as usize,
                 )
@@ -178,15 +180,19 @@ impl LocalExecutor {
                 allowed_offset_ids.push(offset_id);
             }
 
-            let distance_function = SingleNodeHnswParameters::try_from(
-                &plan.scan.collection_and_segments.vector_segment,
-            )
-            .map_err(|err| ExecutorError::Internal(Box::new(err)))?
-            .space;
+            let space = collection_and_segments
+                .collection
+                .configuration
+                .get_local_hnsw_config_with_legacy_fallback(
+                    &plan.scan.collection_and_segments.vector_segment,
+                )
+                .map_err(|err| ExecutorError::Internal(Box::new(err)))?
+                .space;
+
             let mut knn_batch_results = Vec::new();
             let mut returned_user_ids = Vec::new();
             for embedding in plan.knn.embeddings {
-                let query_embedding = if let HnswSpace::Cosine = distance_function {
+                let query_embedding = if let HnswSpace::Cosine = space {
                     normalize(&embedding)
                 } else {
                     embedding

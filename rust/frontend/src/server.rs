@@ -7,7 +7,6 @@ use axum::{
     Json, Router, ServiceExt,
 };
 use chroma_system::System;
-use chroma_types::RawWhereFields;
 use chroma_types::{
     AddCollectionRecordsResponse, ChecklistResponse, Collection, CollectionMetadataUpdate,
     CollectionUuid, CountCollectionsRequest, CountCollectionsResponse, CountRequest, CountResponse,
@@ -20,6 +19,7 @@ use chroma_types::{
     UpdateCollectionRecordsResponse, UpdateCollectionResponse, UpdateMetadata,
     UpsertCollectionRecordsResponse,
 };
+use chroma_types::{CollectionConfiguration, RawWhereFields};
 use mdac::{Rule, Scorecard, ScorecardTicket};
 use opentelemetry::global;
 use opentelemetry::metrics::{Counter, Meter};
@@ -804,7 +804,7 @@ async fn count_collections(
 #[derive(Deserialize, Serialize, ToSchema, Debug, Clone)]
 pub struct CreateCollectionPayload {
     pub name: String,
-    pub configuration: Option<serde_json::Value>,
+    pub configuration: Option<CollectionConfiguration>,
     pub metadata: Option<Metadata>,
     pub get_or_create: bool,
 }

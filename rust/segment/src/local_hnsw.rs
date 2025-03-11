@@ -5,8 +5,8 @@ use chroma_error::{ChromaError, ErrorCodes};
 use chroma_index::{HnswIndex, HnswIndexConfig, Index, IndexConfig, PersistentIndex};
 use chroma_sqlite::{db::SqliteDb, table::MaxSeqId};
 use chroma_types::{
-    operator::RecordDistance, Chunk, HnswParametersFromSegmentError, LogRecord, Operation,
-    OperationRecord, Segment, SegmentUuid, SingleNodeHnswParameters,
+    operator::RecordDistance, Chunk, Collection, HnswParametersFromSegmentError, LogRecord,
+    Operation, OperationRecord, Segment, SegmentUuid,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sea_query::{Expr, OnConflict, Query, SqliteQueryBuilder};
@@ -72,11 +72,16 @@ impl LocalHnswSegmentReader {
     }
 
     pub async fn from_segment(
+        collection: &Collection,
         segment: &Segment,
         dimensionality: usize,
         persist_root: Option<String>,
         sql_db: SqliteDb,
     ) -> Result<Self, LocalHnswSegmentReaderError> {
+        let hnsw_configuration = collection
+            .configuration
+            .get_local_hnsw_config_with_legacy_fallback(segment)?;
+
         match persist_root {
             Some(path_str) => {
                 let path = Path::new(&path_str);
@@ -98,10 +103,9 @@ impl LocalHnswSegmentReader {
                     let id_map: IdMap = serde_pickle::from_reader(file, DeOptions::new())?;
                     if !id_map.id_to_label.is_empty() {
                         // Load hnsw index.
-                        let hnsw_configuration = SingleNodeHnswParameters::try_from(segment)?;
                         let index_config = IndexConfig::new(
                             dimensionality as i32,
-                            hnsw_configuration.space.into(),
+                            hnsw_configuration.space.clone().into(),
                         );
                         let index = HnswIndex::load(
                             index_folder_str,
@@ -133,9 +137,10 @@ impl LocalHnswSegmentReader {
                 Err(LocalHnswSegmentReaderError::UninitializedSegment)
             }
             None => {
-                let hnsw_configuration = SingleNodeHnswParameters::try_from(segment)?;
-                let index_config =
-                    IndexConfig::new(dimensionality as i32, hnsw_configuration.space.into());
+                let index_config = IndexConfig::new(
+                    dimensionality as i32,
+                    hnsw_configuration.space.clone().into(),
+                );
                 let hnsw_config = HnswIndexConfig::new_ephemeral(
                     hnsw_configuration.m,
                     hnsw_configuration.construction_ef,
@@ -371,12 +376,16 @@ impl LocalHnswSegmentWriter {
     }
 
     pub async fn from_segment(
+        collection: &Collection,
         segment: &Segment,
         dimensionality: usize,
         persist_root: Option<String>,
         sql_db: SqliteDb,
     ) -> Result<Self, LocalHnswSegmentWriterError> {
-        let hnsw_configuration = SingleNodeHnswParameters::try_from(segment)?;
+        let hnsw_configuration = collection
+            .configuration
+            .get_local_hnsw_config_with_legacy_fallback(segment)?;
+
         match persist_root {
             Some(path_str) => {
                 let path = Path::new(&path_str);
@@ -417,7 +426,7 @@ impl LocalHnswSegmentWriter {
                         // Load hnsw index.
                         let index_config = IndexConfig::new(
                             dimensionality as i32,
-                            hnsw_configuration.space.into(),
+                            hnsw_configuration.space.clone().into(),
                         );
                         let index = HnswIndex::load(
                             index_folder_str,
@@ -443,8 +452,10 @@ impl LocalHnswSegmentWriter {
                     }
                 }
                 // Initialize index.
-                let index_config =
-                    IndexConfig::new(dimensionality as i32, hnsw_configuration.space.into());
+                let index_config = IndexConfig::new(
+                    dimensionality as i32,
+                    hnsw_configuration.space.clone().into(),
+                );
                 let hnsw_config = HnswIndexConfig::new_persistent(
                     hnsw_configuration.m,
                     hnsw_configuration.construction_ef,
@@ -476,8 +487,10 @@ impl LocalHnswSegmentWriter {
                 })
             }
             None => {
-                let index_config =
-                    IndexConfig::new(dimensionality as i32, hnsw_configuration.space.into());
+                let index_config = IndexConfig::new(
+                    dimensionality as i32,
+                    hnsw_configuration.space.clone().into(),
+                );
                 let hnsw_config = HnswIndexConfig::new_ephemeral(
                     hnsw_configuration.m,
                     hnsw_configuration.construction_ef,

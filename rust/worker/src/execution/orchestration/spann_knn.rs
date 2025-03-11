@@ -162,6 +162,7 @@ impl Orchestrator for SpannKnnOrchestrator {
         tasks.push(knn_log_task);
 
         let reader_context = SpannSegmentReaderContext {
+            collection: todo!(),
             segment: self.knn_filter_output.vector_segment.clone(),
             blockfile_provider: self.blockfile_provider.clone(),
             hnsw_provider: self.hnsw_provider.clone(),
@@ -239,6 +240,7 @@ impl Handler<TaskResult<SpannCentersSearchOutput, SpannCentersSearchError>>
         for head_id in output.center_ids {
             // Invoke Head search operator.
             let reader_context = SpannSegmentReaderContext {
+                collection: todo!(),
                 segment: self.knn_filter_output.vector_segment.clone(),
                 blockfile_provider: self.blockfile_provider.clone(),
                 hnsw_provider: self.hnsw_provider.clone(),

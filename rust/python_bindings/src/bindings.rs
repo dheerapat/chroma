@@ -16,8 +16,8 @@ use chroma_sqlite::config::SqliteDBConfig;
 use chroma_sysdb::{SqliteSysDbConfig, SysDbConfig};
 use chroma_system::System;
 use chroma_types::{
-    Collection, CollectionMetadataUpdate, CountCollectionsRequest, CountResponse,
-    CreateCollectionRequest, CreateDatabaseRequest, CreateTenantRequest, Database,
+    Collection, CollectionConfiguration, CollectionMetadataUpdate, CountCollectionsRequest,
+    CountResponse, CreateCollectionRequest, CreateDatabaseRequest, CreateTenantRequest, Database,
     DeleteCollectionRequest, DeleteDatabaseRequest, GetCollectionRequest, GetDatabaseRequest,
     GetResponse, GetTenantRequest, GetTenantResponse, HeartbeatError, IncludeList,
     ListCollectionsRequest, ListDatabasesRequest, Metadata, QueryResponse, UpdateCollectionRequest,
@@ -257,7 +257,7 @@ impl Bindings {
         database: String,
         py: Python<'_>,
     ) -> ChromaPyResult<Collection> {
-        let configuration_json = match configuration {
+        let configuration = match configuration {
             Some(configuration) => {
                 let configuration_json_str = configuration
                     .call_method0(py, "to_json_str")
@@ -266,7 +266,7 @@ impl Bindings {
                     .map_err(WrappedPyErr)?;
 
                 Some(
-                    serde_json::from_str::<serde_json::Value>(&configuration_json_str)
+                    serde_json::from_str::<CollectionConfiguration>(&configuration_json_str)
                         .map_err(WrappedSerdeJsonError)?,
                 )
             }
@@ -278,7 +278,7 @@ impl Bindings {
             database,
             name,
             metadata,
-            configuration_json,
+            configuration,
             get_or_create,
         )?;
 

@@ -10,6 +10,7 @@ use chroma_index::spann::types::{
 };
 use chroma_index::IndexUuid;
 use chroma_index::{hnsw_provider::HnswIndexProvider, spann::types::SpannIndexWriter};
+use chroma_types::Collection;
 use chroma_types::DistributedHnswParameters;
 use chroma_types::HnswParametersFromSegmentError;
 use chroma_types::SegmentUuid;
@@ -80,6 +81,7 @@ impl ChromaError for SpannSegmentWriterError {
 impl SpannSegmentWriter {
     #[allow(dead_code)]
     pub async fn from_segment(
+        collection: &Collection,
         segment: &Segment,
         blockfile_provider: &BlockfileProvider,
         hnsw_provider: &HnswIndexProvider,
@@ -88,7 +90,11 @@ impl SpannSegmentWriter {
         if segment.r#type != SegmentType::Spann || segment.scope != SegmentScope::VECTOR {
             return Err(SpannSegmentWriterError::InvalidArgument);
         }
-        let hnsw_configuration = DistributedHnswParameters::try_from(segment)?;
+
+        let hnsw_configuration = collection
+            .configuration
+            .get_distributed_hnsw_config_with_legacy_fallback(segment)
+            .map_err(SpannSegmentWriterError::InvalidHnswConfiguration)?;
 
         let (hnsw_id, m, ef_construction, ef_search) = match segment.file_path.get(HNSW_PATH) {
             Some(hnsw_path) => match hnsw_path.first() {
@@ -175,7 +181,7 @@ impl SpannSegmentWriter {
             ef_construction,
             ef_search,
             &segment.collection,
-            hnsw_configuration.space.into(),
+            hnsw_configuration.space.clone().into(),
             dimensionality,
             blockfile_provider,
         )
@@ -357,6 +363,7 @@ impl ChromaError for SpannSegmentReaderError {
 
 #[derive(Debug)]
 pub struct SpannSegmentReaderContext {
+    pub collection: Collection,
     pub segment: Segment,
     pub blockfile_provider: BlockfileProvider,
     pub hnsw_provider: HnswIndexProvider,
@@ -373,6 +380,7 @@ pub struct SpannSegmentReader<'me> {
 impl<'me> SpannSegmentReader<'me> {
     #[allow(dead_code)]
     pub async fn from_segment(
+        collection: &Collection,
         segment: &Segment,
         blockfile_provider: &BlockfileProvider,
         hnsw_provider: &HnswIndexProvider,
@@ -381,7 +389,7 @@ impl<'me> SpannSegmentReader<'me> {
         if segment.r#type != SegmentType::Spann || segment.scope != SegmentScope::VECTOR {
             return Err(SpannSegmentReaderError::InvalidArgument);
         }
-        let hnsw_configuration = DistributedHnswParameters::try_from(segment)?;
+
         let hnsw_id = match segment.file_path.get(HNSW_PATH) {
             Some(hnsw_path) => match hnsw_path.first() {
                 Some(index_id) => {
@@ -434,11 +442,16 @@ impl<'me> SpannSegmentReader<'me> {
             None => None,
         };
 
+        let hnsw_configuration = collection
+            .configuration
+            .get_distributed_hnsw_config_with_legacy_fallback(segment)
+            .map_err(SpannSegmentReaderError::InvalidHnswConfiguration)?;
+
         let index_reader = match SpannIndexReader::from_id(
             hnsw_id.as_ref(),
             hnsw_provider,
             &segment.collection,
-            hnsw_configuration.space.into(),
+            hnsw_configuration.space.clone().into(),
             dimensionality,
             posting_list_id.as_ref(),
             versions_map_id.as_ref(),
@@ -487,7 +500,7 @@ mod test {
     use chroma_index::{hnsw_provider::HnswIndexProvider, Index};
     use chroma_storage::{local::LocalStorage, Storage};
     use chroma_types::{
-        Chunk, CollectionUuid, LogRecord, Metadata, MetadataValue, Operation, OperationRecord,
+        Chunk, CollectionUuid, DistributedHnswParameters, LogRecord, Operation, OperationRecord,
         SegmentUuid, SpannPostingList,
     };
 
@@ -521,23 +534,44 @@ mod test {
         );
         let collection_id = CollectionUuid::new();
         let segment_id = SegmentUuid::new();
-        let mut metadata_hash_map = Metadata::new();
-        metadata_hash_map.insert(
-            "hnsw:space".to_string(),
-            MetadataValue::Str("l2".to_string()),
-        );
-        metadata_hash_map.insert("hnsw:M".to_string(), MetadataValue::Int(16));
-        metadata_hash_map.insert("hnsw:construction_ef".to_string(), MetadataValue::Int(100));
-        metadata_hash_map.insert("hnsw:search_ef".to_string(), MetadataValue::Int(100));
+
         let mut spann_segment = chroma_types::Segment {
             id: segment_id,
             collection: collection_id,
             r#type: chroma_types::SegmentType::Spann,
             scope: chroma_types::SegmentScope::VECTOR,
-            metadata: Some(metadata_hash_map),
+            metadata: None,
             file_path: HashMap::new(),
         };
+
+        let mut hnsw_parameters = DistributedHnswParameters::default();
+        hnsw_parameters.space = chroma_types::HnswSpace::L2;
+        hnsw_parameters.m = 16;
+        hnsw_parameters.construction_ef = 100;
+        hnsw_parameters.search_ef = 100;
+
+        let collection = chroma_types::Collection {
+            collection_id,
+            name: "test".to_string(),
+            configuration: chroma_types::CollectionConfiguration {
+                vector_index_configuration: chroma_types::VectorIndexConfiguration::DistributedHnsw(
+                    hnsw_parameters,
+                ),
+                embedding_function: None,
+            },
+            metadata: None,
+            dimension: None,
+            tenant: "test".to_string(),
+            database: "test".to_string(),
+            log_position: 0,
+            version: 0,
+            total_records_post_compaction: 0,
+            size_bytes_post_compaction: 0,
+            last_compaction_time_secs: 0,
+        };
+
         let spann_writer = SpannSegmentWriter::from_segment(
+            &collection,
             &spann_segment,
             &blockfile_provider,
             &hnsw_provider,
@@ -610,6 +644,7 @@ mod test {
             rx,
         );
         let spann_writer = SpannSegmentWriter::from_segment(
+            &collection,
             &spann_segment,
             &blockfile_provider,
             &hnsw_provider,
@@ -710,23 +745,43 @@ mod test {
         );
         let collection_id = CollectionUuid::new();
         let segment_id = SegmentUuid::new();
-        let mut metadata_hash_map = Metadata::new();
-        metadata_hash_map.insert(
-            "hnsw:space".to_string(),
-            MetadataValue::Str("l2".to_string()),
-        );
-        metadata_hash_map.insert("hnsw:M".to_string(), MetadataValue::Int(16));
-        metadata_hash_map.insert("hnsw:construction_ef".to_string(), MetadataValue::Int(100));
-        metadata_hash_map.insert("hnsw:search_ef".to_string(), MetadataValue::Int(100));
+
+        let mut hnsw_parameters = DistributedHnswParameters::default();
+        hnsw_parameters.space = chroma_types::HnswSpace::L2;
+        hnsw_parameters.m = 16;
+        hnsw_parameters.construction_ef = 100;
+        hnsw_parameters.search_ef = 100;
+
+        let collection = chroma_types::Collection {
+            collection_id,
+            name: "test".to_string(),
+            configuration: chroma_types::CollectionConfiguration {
+                vector_index_configuration: chroma_types::VectorIndexConfiguration::DistributedHnsw(
+                    hnsw_parameters,
+                ),
+                embedding_function: None,
+            },
+            metadata: None,
+            dimension: None,
+            tenant: "test".to_string(),
+            database: "test".to_string(),
+            log_position: 0,
+            version: 0,
+            total_records_post_compaction: 0,
+            size_bytes_post_compaction: 0,
+            last_compaction_time_secs: 0,
+        };
+
         let mut spann_segment = chroma_types::Segment {
             id: segment_id,
             collection: collection_id,
             r#type: chroma_types::SegmentType::Spann,
             scope: chroma_types::SegmentScope::VECTOR,
-            metadata: Some(metadata_hash_map),
+            metadata: None,
             file_path: HashMap::new(),
         };
         let spann_writer = SpannSegmentWriter::from_segment(
+            &collection,
             &spann_segment,
             &blockfile_provider,
             &hnsw_provider,
@@ -799,6 +854,7 @@ mod test {
             rx,
         );
         let spann_reader = SpannSegmentReader::from_segment(
+            &collection,
             &spann_segment,
             &blockfile_provider,
             &hnsw_provider,

@@ -1,8 +1,9 @@
-use crate::{Metadata, Segment};
+use crate::Metadata;
 use chroma_error::{ChromaError, ErrorCodes};
 use serde::{Deserialize, Serialize};
 use std::num::NonZero;
 use thiserror::Error;
+use utoipa::ToSchema;
 use validator::Validate;
 
 #[derive(Debug, Error)]
@@ -22,7 +23,7 @@ impl ChromaError for HnswParametersFromSegmentError {
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, PartialEq, Serialize, Deserialize, Clone, ToSchema)]
 pub enum HnswSpace {
     #[default]
     #[serde(rename = "l2")]
@@ -67,7 +68,7 @@ fn default_sync_threshold_distributed() -> usize {
     64
 }
 
-#[derive(Debug, Serialize, Deserialize, Validate)]
+#[derive(Clone, PartialEq, ToSchema, Debug, Serialize, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
 pub struct DistributedHnswParameters {
     #[serde(rename = "hnsw:space", default)]
@@ -96,19 +97,11 @@ impl Default for DistributedHnswParameters {
     }
 }
 
-impl TryFrom<&Segment> for DistributedHnswParameters {
-    type Error = HnswParametersFromSegmentError;
-
-    fn try_from(value: &Segment) -> Result<Self, Self::Error> {
-        DistributedHnswParameters::try_from(&value.metadata)
-    }
-}
-
-impl TryFrom<&Option<Metadata>> for DistributedHnswParameters {
-    type Error = HnswParametersFromSegmentError;
-
-    fn try_from(metadata: &Option<Metadata>) -> Result<Self, Self::Error> {
-        if let Some(metadata) = metadata {
+impl DistributedHnswParameters {
+    pub fn from_legacy_segment_metadata(
+        segment_metadata: &Option<Metadata>,
+    ) -> Result<Self, HnswParametersFromSegmentError> {
+        if let Some(metadata) = segment_metadata {
             let filtered_metadata = metadata
                 .clone()
                 .into_iter()
@@ -125,21 +118,11 @@ impl TryFrom<&Option<Metadata>> for DistributedHnswParameters {
     }
 }
 
-impl TryFrom<DistributedHnswParameters> for Metadata {
-    type Error = serde_json::Error;
-
-    fn try_from(params: DistributedHnswParameters) -> Result<Self, Self::Error> {
-        let json_str = serde_json::to_string(&params)?;
-        let parsed = serde_json::from_str::<Metadata>(&json_str)?;
-        Ok(parsed)
-    }
-}
-
 fn default_batch_size() -> usize {
     100
 }
 
-#[derive(Debug, Serialize, Deserialize, Validate)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Validate, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SingleNodeHnswParameters {
     #[serde(rename = "hnsw:space", default)]
@@ -168,19 +151,11 @@ impl Default for SingleNodeHnswParameters {
     }
 }
 
-impl TryFrom<&Segment> for SingleNodeHnswParameters {
-    type Error = HnswParametersFromSegmentError;
-
-    fn try_from(value: &Segment) -> Result<Self, Self::Error> {
-        SingleNodeHnswParameters::try_from(&value.metadata)
-    }
-}
-
-impl TryFrom<&Option<Metadata>> for SingleNodeHnswParameters {
-    type Error = HnswParametersFromSegmentError;
-
-    fn try_from(metadata: &Option<Metadata>) -> Result<Self, Self::Error> {
-        if let Some(metadata) = metadata {
+impl SingleNodeHnswParameters {
+    pub fn from_legacy_segment_metadata(
+        segment_metadata: &Option<Metadata>,
+    ) -> Result<Self, HnswParametersFromSegmentError> {
+        if let Some(metadata) = segment_metadata {
             let filtered_metadata = metadata
                 .clone()
                 .into_iter()
@@ -194,15 +169,5 @@ impl TryFrom<&Option<Metadata>> for SingleNodeHnswParameters {
         } else {
             Ok(SingleNodeHnswParameters::default())
         }
-    }
-}
-
-impl TryFrom<SingleNodeHnswParameters> for Metadata {
-    type Error = serde_json::Error;
-
-    fn try_from(params: SingleNodeHnswParameters) -> Result<Self, Self::Error> {
-        let json_str = serde_json::to_string(&params)?;
-        let parsed = serde_json::from_str::<Metadata>(&json_str)?;
-        Ok(parsed)
     }
 }

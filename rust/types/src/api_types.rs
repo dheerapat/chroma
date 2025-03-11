@@ -1,3 +1,4 @@
+use crate::collection_configuration::CollectionConfiguration;
 use crate::error::QueryConversionError;
 use crate::operator::GetResult;
 use crate::operator::KnnBatchResult;
@@ -20,7 +21,6 @@ use chroma_error::ChromaValidationError;
 use chroma_error::{ChromaError, ErrorCodes};
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::Value;
 use std::time::SystemTimeError;
 use thiserror::Error;
 use tonic::Status;
@@ -532,7 +532,7 @@ pub struct CreateCollectionRequest {
     pub name: String,
     #[validate(custom(function = "validate_non_empty_metadata"))]
     pub metadata: Option<Metadata>,
-    pub configuration_json: Option<Value>,
+    pub configuration: Option<CollectionConfiguration>,
     pub get_or_create: bool,
 }
 
@@ -542,7 +542,7 @@ impl CreateCollectionRequest {
         database_name: String,
         name: String,
         metadata: Option<Metadata>,
-        configuration_json: Option<Value>,
+        configuration: Option<CollectionConfiguration>,
         get_or_create: bool,
     ) -> Result<Self, ChromaValidationError> {
         let request = Self {
@@ -550,7 +550,7 @@ impl CreateCollectionRequest {
             database_name,
             name,
             metadata,
-            configuration_json,
+            configuration,
             get_or_create,
         };
         request.validate().map_err(ChromaValidationError::from)?;
