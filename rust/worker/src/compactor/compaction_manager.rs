@@ -365,10 +365,8 @@ mod tests {
     use chroma_system::{Dispatcher, DispatcherConfig};
     use chroma_types::{Collection, LogRecord, Operation, OperationRecord, Segment};
     use chroma_types::{CollectionConfiguration, SegmentUuid};
-    use serde_json::Value;
     use std::collections::HashMap;
     use std::path::PathBuf;
-    use std::str::FromStr;
 
     #[tokio::test]
     async fn test_compaction_manager() {
@@ -387,6 +385,7 @@ mod tests {
             .tenant(tenant_1.clone())
             .database("database_1".to_string())
             .configuration(CollectionConfiguration::default_single_node())
+            .log_position(-1)
             .build();
 
         let collection_uuid_1 = collection_1.collection_id;
@@ -418,6 +417,7 @@ mod tests {
             .tenant(tenant_2.clone())
             .database("database_2".to_string())
             .configuration(CollectionConfiguration::default_single_node())
+            .log_position(-1)
             .build();
 
         let collection_uuid_2 = collection_2.collection_id;

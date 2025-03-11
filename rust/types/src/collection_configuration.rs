@@ -32,6 +32,15 @@ impl CollectionConfiguration {
         }
     }
 
+    pub fn default_distributed() -> Self {
+        Self {
+            vector_index_configuration: VectorIndexConfiguration::DistributedHnsw(
+                DistributedHnswParameters::default(),
+            ),
+            embedding_function: None,
+        }
+    }
+
     fn get_distributed_hnsw_config(&self) -> Option<DistributedHnswParameters> {
         match &self.vector_index_configuration {
             VectorIndexConfiguration::DistributedHnsw(config) => Some(config.clone()),

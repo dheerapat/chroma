@@ -178,14 +178,14 @@ mod tests {
         let collection_2 = Collection::builder()
             .name("collection_2".to_string())
             .dimension(1)
-            .tenant(tenant_1.clone())
+            .tenant(tenant_2.clone())
             .database("database_2".to_string())
             .configuration(CollectionConfiguration::default_single_node())
             .total_records_post_compaction(total_records_post_compaction)
             .size_bytes_post_compaction(size_bytes_post_compaction)
             .last_compaction_time_secs(last_compaction_time_secs)
             .build();
-        let collection_uuid_2 = collection_1.collection_id;
+        let collection_uuid_2 = collection_2.collection_id;
 
         match sysdb {
             SysDb::Test(ref mut sysdb) => {

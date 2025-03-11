@@ -52,7 +52,7 @@ impl std::fmt::Display for CollectionUuid {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize, ToSchema, bon::Builder)]
 #[cfg_attr(feature = "pyo3", pyo3::pyclass)]
 pub struct Collection {
-    #[builder(default)]
+    #[builder(default = CollectionUuid::new())]
     #[serde(rename(serialize = "id"))]
     pub collection_id: CollectionUuid,
     #[builder(default)]
@@ -64,7 +64,7 @@ pub struct Collection {
     pub tenant: String,
     #[builder(default)]
     pub database: String,
-    #[builder(default = -1)]
+    #[builder(default)]
     pub log_position: i64,
     #[builder(default)]
     pub version: i32,

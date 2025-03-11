@@ -286,9 +286,8 @@ mod tests {
     use chroma_memberlist::memberlist_provider::Member;
     use chroma_sysdb::TestSysDb;
     use chroma_types::{
-        Collection, CollectionConfiguration, CollectionUuid, LogRecord, Operation, OperationRecord,
+        Collection, CollectionConfiguration, LogRecord, Operation, OperationRecord,
     };
-    use serde_json::Value;
 
     #[tokio::test]
     async fn test_scheduler() {
@@ -300,13 +299,15 @@ mod tests {
 
         let tenant_1 = "tenant_1".to_string();
         let collection_1 = Collection::builder()
+            .collection_id(
+                CollectionUuid::from_str("00000000-0000-0000-0000-000000000001").unwrap(),
+            )
             .name("collection_1".to_string())
             .dimension(1)
             .tenant(tenant_1.clone())
             .database("database_1".to_string())
             .configuration(CollectionConfiguration::default_single_node())
             .build();
-
         let collection_uuid_1 = collection_1.collection_id;
 
         in_memory_log.add_log(
@@ -331,6 +332,9 @@ mod tests {
 
         let tenant_2 = "tenant_2".to_string();
         let collection_2 = Collection::builder()
+            .collection_id(
+                CollectionUuid::from_str("00000000-0000-0000-0000-000000000002").unwrap(),
+            )
             .name("collection_2".to_string())
             .dimension(1)
             .tenant(tenant_2.clone())
@@ -433,7 +437,7 @@ mod tests {
         // Set disable list.
         std::env::set_var(
             "CHROMA_COMPACTION_SERVICE__COMPACTOR__DISABLED_COLLECTIONS",
-            "[\"00000000-0000-0000-0000-000000000001\"]",
+            format!("[\"{}\"]", collection_uuid_1.0.to_string()),
         );
         scheduler.schedule().await;
         let jobs = scheduler.get_jobs();
@@ -447,11 +451,11 @@ mod tests {
         // Even . should work.
         std::env::set_var(
             "CHROMA_COMPACTION_SERVICE.COMPACTOR.DISABLED_COLLECTIONS",
-            "[\"00000000-0000-0000-0000-000000000002\"]",
+            format!("[\"{}\"]", collection_uuid_2.0.to_string()),
         );
         std::env::set_var(
             "CHROMA_COMPACTION_SERVICE.IRRELEVANT",
-            "[\"00000000-0000-0000-0000-000000000001\"]",
+            format!("[\"{}\"]", collection_uuid_1.0.to_string()),
         );
         scheduler.schedule().await;
         let jobs = scheduler.get_jobs();

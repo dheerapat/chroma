@@ -11,7 +11,6 @@ use chroma_index::spann::types::{
 use chroma_index::IndexUuid;
 use chroma_index::{hnsw_provider::HnswIndexProvider, spann::types::SpannIndexWriter};
 use chroma_types::Collection;
-use chroma_types::DistributedHnswParameters;
 use chroma_types::HnswParametersFromSegmentError;
 use chroma_types::SegmentUuid;
 use chroma_types::{MaterializedLogOperation, Segment, SegmentScope, SegmentType};
@@ -544,11 +543,13 @@ mod test {
             file_path: HashMap::new(),
         };
 
-        let mut hnsw_parameters = DistributedHnswParameters::default();
-        hnsw_parameters.space = chroma_types::HnswSpace::L2;
-        hnsw_parameters.m = 16;
-        hnsw_parameters.construction_ef = 100;
-        hnsw_parameters.search_ef = 100;
+        let hnsw_parameters = DistributedHnswParameters {
+            space: chroma_types::HnswSpace::L2,
+            m: 16,
+            construction_ef: 100,
+            search_ef: 100,
+            ..Default::default()
+        };
 
         let collection = chroma_types::Collection {
             collection_id,
@@ -746,11 +747,13 @@ mod test {
         let collection_id = CollectionUuid::new();
         let segment_id = SegmentUuid::new();
 
-        let mut hnsw_parameters = DistributedHnswParameters::default();
-        hnsw_parameters.space = chroma_types::HnswSpace::L2;
-        hnsw_parameters.m = 16;
-        hnsw_parameters.construction_ef = 100;
-        hnsw_parameters.search_ef = 100;
+        let hnsw_parameters = DistributedHnswParameters {
+            space: chroma_types::HnswSpace::L2,
+            m: 16,
+            construction_ef: 100,
+            search_ef: 100,
+            ..Default::default()
+        };
 
         let collection = chroma_types::Collection {
             collection_id,

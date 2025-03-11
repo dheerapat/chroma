@@ -6,9 +6,7 @@ use chroma_index::hnsw_provider::{
     HnswIndexProviderOpenError, HnswIndexRef,
 };
 use chroma_index::{Index, IndexUuid};
-use chroma_types::{
-    Collection, DistributedHnswParameters, HnswParametersFromSegmentError, SegmentUuid,
-};
+use chroma_types::{Collection, HnswParametersFromSegmentError, SegmentUuid};
 use chroma_types::{MaterializedLogOperation, Segment};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -95,7 +93,7 @@ impl DistributedHNSWSegmentWriter {
         let hnsw_configuration = collection
             .configuration
             .get_distributed_hnsw_config_with_legacy_fallback(segment)
-            .map_err(|e| DistributedHNSWSegmentFromSegmentError::InvalidHnswConfiguration(e))?;
+            .map_err(DistributedHNSWSegmentFromSegmentError::InvalidHnswConfiguration)?;
 
         // TODO: this is hacky, we use the presence of files to determine if we need to load or create the index
         // ideally, an explicit state would be better. When we implement distributed HNSW segments,
@@ -290,7 +288,7 @@ impl DistributedHNSWSegmentReader {
         let hnsw_configuration = collection
             .configuration
             .get_distributed_hnsw_config_with_legacy_fallback(segment)
-            .map_err(|e| DistributedHNSWSegmentFromSegmentError::InvalidHnswConfiguration(e))?;
+            .map_err(DistributedHNSWSegmentFromSegmentError::InvalidHnswConfiguration)?;
 
         // TODO: this is hacky, we use the presence of files to determine if we need to load or create the index
         // ideally, an explicit state would be better. When we implement distributed HNSW segments,
@@ -382,7 +380,8 @@ pub mod test {
 
     use chroma_index::{HnswIndexConfig, DEFAULT_MAX_ELEMENTS};
     use chroma_types::{
-        CollectionUuid, DistributedHnswParameters, MetadataValue, Segment, SegmentUuid,
+        Collection, CollectionConfiguration, CollectionUuid, DistributedHnswParameters, Segment,
+        SegmentUuid,
     };
     use tempfile::tempdir;
     use uuid::Uuid;
@@ -390,15 +389,6 @@ pub mod test {
     #[test]
     fn parameter_defaults() {
         let persist_path = tempdir().unwrap().path().to_owned();
-
-        let segment = Segment {
-            id: SegmentUuid(Uuid::new_v4()),
-            r#type: chroma_types::SegmentType::HnswDistributed,
-            scope: chroma_types::SegmentScope::VECTOR,
-            metadata: None,
-            collection: CollectionUuid(Uuid::new_v4()),
-            file_path: HashMap::new(),
-        };
 
         let hnsw_configuration = DistributedHnswParameters::default();
         let config = HnswIndexConfig::new_persistent(
@@ -421,37 +411,48 @@ pub mod test {
             Some(persist_path.to_str().unwrap().to_string())
         );
 
-        // Try partial metadata
-        let mut metadata = HashMap::new();
-        metadata.insert("hnsw:M".to_string(), MetadataValue::Int(10_i64));
+        // Try partial override
+        let collection = Collection::builder()
+            .configuration(CollectionConfiguration {
+                vector_index_configuration: chroma_types::VectorIndexConfiguration::DistributedHnsw(
+                    DistributedHnswParameters {
+                        m: 10,
+                        ..Default::default()
+                    },
+                ),
+                embedding_function: None,
+            })
+            .build();
 
         let segment = Segment {
             id: SegmentUuid(Uuid::new_v4()),
             r#type: chroma_types::SegmentType::HnswDistributed,
             scope: chroma_types::SegmentScope::VECTOR,
-            metadata: Some(metadata),
+            metadata: None,
             collection: CollectionUuid(Uuid::new_v4()),
             file_path: HashMap::new(),
         };
 
-        // todo
-        // let hnsw_params = DistributedHnswParameters::try_from(&segment).unwrap();
-        // let config = HnswIndexConfig::new_persistent(
-        //     hnsw_params.m,
-        //     hnsw_params.construction_ef,
-        //     hnsw_params.search_ef,
-        //     &persist_path,
-        // )
-        // .expect("Error creating hnsw index config");
+        let hnsw_params = collection
+            .configuration
+            .get_distributed_hnsw_config_with_legacy_fallback(&segment)
+            .unwrap();
+        let config = HnswIndexConfig::new_persistent(
+            hnsw_params.m,
+            hnsw_params.construction_ef,
+            hnsw_params.search_ef,
+            &persist_path,
+        )
+        .expect("Error creating hnsw index config");
 
-        // assert_eq!(config.max_elements, DEFAULT_MAX_ELEMENTS);
-        // assert_eq!(config.m, 10);
-        // assert_eq!(config.ef_construction, default_hnsw_params.construction_ef);
-        // assert_eq!(config.ef_search, default_hnsw_params.search_ef);
-        // assert_eq!(config.random_seed, 0);
-        // assert_eq!(
-        //     config.persist_path,
-        //     Some(persist_path.to_str().unwrap().to_string())
-        // );
+        assert_eq!(config.max_elements, DEFAULT_MAX_ELEMENTS);
+        assert_eq!(config.m, 10);
+        assert_eq!(config.ef_construction, default_hnsw_params.construction_ef);
+        assert_eq!(config.ef_search, default_hnsw_params.search_ef);
+        assert_eq!(config.random_seed, 0);
+        assert_eq!(
+            config.persist_path,
+            Some(persist_path.to_str().unwrap().to_string())
+        );
     }
 }
