@@ -124,7 +124,7 @@ fn default_batch_size() -> usize {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Validate, ToSchema)]
 #[serde(deny_unknown_fields)]
-pub struct SingleNodeHnswParameters {
+pub struct LocalHnswParameters {
     #[serde(rename = "hnsw:space", default)]
     pub space: HnswSpace,
     #[serde(rename = "hnsw:construction_ef", default = "default_construction_ef")]
@@ -145,13 +145,13 @@ pub struct SingleNodeHnswParameters {
     pub batch_size: usize,
 }
 
-impl Default for SingleNodeHnswParameters {
+impl Default for LocalHnswParameters {
     fn default() -> Self {
         serde_json::from_str("{}").unwrap()
     }
 }
 
-impl SingleNodeHnswParameters {
+impl LocalHnswParameters {
     pub fn from_legacy_segment_metadata(
         segment_metadata: &Option<Metadata>,
     ) -> Result<Self, HnswParametersFromSegmentError> {
@@ -163,11 +163,11 @@ impl SingleNodeHnswParameters {
                 .collect::<Metadata>();
 
             let metadata_str = serde_json::to_string(&filtered_metadata)?;
-            let parsed = serde_json::from_str::<SingleNodeHnswParameters>(&metadata_str)?;
+            let parsed = serde_json::from_str::<LocalHnswParameters>(&metadata_str)?;
             parsed.validate()?;
             Ok(parsed)
         } else {
-            Ok(SingleNodeHnswParameters::default())
+            Ok(LocalHnswParameters::default())
         }
     }
 }

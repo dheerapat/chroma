@@ -10,7 +10,7 @@ use chroma_system::{
     wrap, ChannelError, ComponentContext, ComponentHandle, Dispatcher, Handler, Orchestrator,
     PanicError, TaskError, TaskMessage, TaskResult,
 };
-use chroma_types::{CollectionAndSegments, Segment};
+use chroma_types::{CollectionAndSegments, HnswParametersFromSegmentError, Segment};
 use thiserror::Error;
 use tokio::sync::oneshot::{error::RecvError, Sender};
 
@@ -37,6 +37,8 @@ pub enum KnnError {
     Filter(#[from] FilterError),
     #[error("Error creating hnsw segment reader: {0}")]
     HnswReader(#[from] DistributedHNSWSegmentFromSegmentError),
+    #[error("Error parsing collection config: {0}")]
+    Config(#[from] HnswParametersFromSegmentError),
     #[error("Error running Knn Log Operator: {0}")]
     KnnLog(#[from] KnnLogError),
     #[error("Error running Knn Hnsw Operator: {0}")]
@@ -72,6 +74,7 @@ impl ChromaError for KnnError {
             KnnError::FetchLog(e) => e.code(),
             KnnError::Filter(e) => e.code(),
             KnnError::HnswReader(e) => e.code(),
+            KnnError::Config(e) => e.code(),
             KnnError::KnnLog(e) => e.code(),
             KnnError::KnnHnsw(e) => e.code(),
             KnnError::KnnMerge(_) => ErrorCodes::Internal,
@@ -296,14 +299,19 @@ impl Handler<TaskResult<FilterOutput, FilterError>> for KnnFilterOrchestrator {
             }
         };
 
-        let hnsw_configuration = self
+        let hnsw_configuration = match self
             .collection_and_segments
             .collection
             .configuration
             .get_distributed_hnsw_config_with_legacy_fallback(
                 &self.collection_and_segments.vector_segment,
-            )
-            .unwrap(); // todo
+            ) {
+            Ok(config) => config,
+            Err(err) => {
+                self.terminate_with_result(Err(err.into()), ctx);
+                return;
+            }
+        };
 
         let output = KnnFilterOutput {
             logs: self

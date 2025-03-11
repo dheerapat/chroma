@@ -1,5 +1,5 @@
 use crate::{
-    DistributedHnswParameters, HnswParametersFromSegmentError, Segment, SingleNodeHnswParameters,
+    DistributedHnswParameters, HnswParametersFromSegmentError, LocalHnswParameters, Segment,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -12,7 +12,7 @@ pub struct EmbeddingFunctionConfiguration {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub enum VectorIndexConfiguration {
-    SingleNodeHnsw(SingleNodeHnswParameters),
+    LocalHnsw(LocalHnswParameters),
     DistributedHnsw(DistributedHnswParameters),
 }
 
@@ -23,10 +23,10 @@ pub struct CollectionConfiguration {
 }
 
 impl CollectionConfiguration {
-    pub fn default_single_node() -> Self {
+    pub fn default_local() -> Self {
         Self {
-            vector_index_configuration: VectorIndexConfiguration::SingleNodeHnsw(
-                SingleNodeHnswParameters::default(),
+            vector_index_configuration: VectorIndexConfiguration::LocalHnsw(
+                LocalHnswParameters::default(),
             ),
             embedding_function: None,
         }
@@ -59,9 +59,9 @@ impl CollectionConfiguration {
     }
 
     /// todo, rename
-    fn get_local_hnsw_config(&self) -> Option<SingleNodeHnswParameters> {
+    fn get_local_hnsw_config(&self) -> Option<LocalHnswParameters> {
         match &self.vector_index_configuration {
-            VectorIndexConfiguration::SingleNodeHnsw(config) => Some(config.clone()),
+            VectorIndexConfiguration::LocalHnsw(config) => Some(config.clone()),
             _ => None,
         }
     }
@@ -69,10 +69,10 @@ impl CollectionConfiguration {
     pub fn get_local_hnsw_config_with_legacy_fallback(
         &self,
         segment: &Segment,
-    ) -> Result<SingleNodeHnswParameters, HnswParametersFromSegmentError> {
+    ) -> Result<LocalHnswParameters, HnswParametersFromSegmentError> {
         match self.get_local_hnsw_config() {
             Some(config) => Ok(config),
-            None => SingleNodeHnswParameters::from_legacy_segment_metadata(&segment.metadata),
+            None => LocalHnswParameters::from_legacy_segment_metadata(&segment.metadata),
         }
     }
 }

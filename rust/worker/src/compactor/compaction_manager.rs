@@ -384,7 +384,7 @@ mod tests {
             .dimension(1)
             .tenant(tenant_1.clone())
             .database("database_1".to_string())
-            .configuration(CollectionConfiguration::default_single_node())
+            .configuration(CollectionConfiguration::default_local())
             .log_position(-1)
             .build();
 
@@ -416,7 +416,7 @@ mod tests {
             .dimension(1)
             .tenant(tenant_2.clone())
             .database("database_2".to_string())
-            .configuration(CollectionConfiguration::default_single_node())
+            .configuration(CollectionConfiguration::default_local())
             .log_position(-1)
             .build();
 

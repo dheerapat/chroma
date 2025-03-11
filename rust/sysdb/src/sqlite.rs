@@ -242,7 +242,7 @@ impl SqliteSysDb {
         dimension: Option<i32>,
         get_or_create: bool,
     ) -> Result<CreateCollectionResponse, CreateCollectionError> {
-        let configuration = configuration.unwrap_or(CollectionConfiguration::default_single_node());
+        let configuration = configuration.unwrap_or(CollectionConfiguration::default_local());
 
         let mut tx = self
             .db
@@ -677,7 +677,7 @@ impl SqliteSysDb {
                             Err(e) => return Some(Err(e)),
                         }
                     }
-                    None => CollectionConfiguration::default_single_node(),
+                    None => CollectionConfiguration::default_local(),
                 };
 
                 Some(Ok(Collection {

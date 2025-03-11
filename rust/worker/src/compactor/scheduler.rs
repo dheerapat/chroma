@@ -306,7 +306,7 @@ mod tests {
             .dimension(1)
             .tenant(tenant_1.clone())
             .database("database_1".to_string())
-            .configuration(CollectionConfiguration::default_single_node())
+            .configuration(CollectionConfiguration::default_local())
             .build();
         let collection_uuid_1 = collection_1.collection_id;
 
@@ -339,7 +339,7 @@ mod tests {
             .dimension(1)
             .tenant(tenant_2.clone())
             .database("database_2".to_string())
-            .configuration(CollectionConfiguration::default_single_node())
+            .configuration(CollectionConfiguration::default_local())
             .build();
         let collection_uuid_2 = collection_2.collection_id;
 
@@ -502,7 +502,7 @@ mod tests {
             .dimension(1)
             .tenant(tenant_1.clone())
             .database("database_1".to_string())
-            .configuration(CollectionConfiguration::default_single_node())
+            .configuration(CollectionConfiguration::default_local())
             .build();
 
         let collection_uuid_1 = collection_1.collection_id;

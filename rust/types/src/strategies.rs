@@ -211,7 +211,7 @@ impl Arbitrary for TestCollectionData {
                     collection: Collection {
                         collection_id,
                         name: PROP_COLL.to_string(),
-                        configuration: CollectionConfiguration::default_single_node(),
+                        configuration: CollectionConfiguration::default_local(),
                         metadata: None,
                         dimension: Some(3),
                         tenant: PROP_TENANT.to_string(),

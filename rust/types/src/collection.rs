@@ -131,7 +131,7 @@ impl Collection {
             collection_id: CollectionUuid::new(),
             name: "test_collection".to_string(),
             // todo
-            configuration: CollectionConfiguration::default_single_node(),
+            configuration: CollectionConfiguration::default_local(),
             metadata: None,
             dimension: Some(dim),
             tenant: "default_tenant".to_string(),
@@ -184,7 +184,7 @@ impl TryFrom<chroma_proto::Collection> for Collection {
         Ok(Collection {
             collection_id,
             name: proto_collection.name,
-            configuration: CollectionConfiguration::default_single_node(), // todo
+            configuration: CollectionConfiguration::default_local(), // todo
             metadata: collection_metadata,
             dimension: proto_collection.dimension,
             tenant: proto_collection.tenant,
