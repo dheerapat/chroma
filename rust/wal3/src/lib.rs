@@ -54,6 +54,26 @@ pub enum Error {
     StorageError(#[from] Arc<chroma_storage::StorageError>),
 }
 
+impl chroma_error::ChromaError for Error {
+    fn code(&self) -> chroma_error::ErrorCodes {
+        match self {
+            Self::Success => chroma_error::ErrorCodes::Success,
+            Self::UninitializedLog => chroma_error::ErrorCodes::FailedPrecondition,
+            Self::AlreadyInitialized => chroma_error::ErrorCodes::AlreadyExists,
+            Self::GarbageCollected => chroma_error::ErrorCodes::NotFound,
+            Self::LogContention => chroma_error::ErrorCodes::Aborted,
+            Self::LogFull => chroma_error::ErrorCodes::Aborted,
+            Self::LogClosed => chroma_error::ErrorCodes::FailedPrecondition,
+            Self::Internal => chroma_error::ErrorCodes::Internal,
+            Self::CorruptManifest(_) => chroma_error::ErrorCodes::DataLoss,
+            Self::CorruptCursor(_) => chroma_error::ErrorCodes::DataLoss,
+            Self::NoSuchCursor(_) => chroma_error::ErrorCodes::Unknown,
+            Self::ParquetError(_) => chroma_error::ErrorCodes::Unknown,
+            Self::StorageError(storage) => storage.code(),
+        }
+    }
+}
+
 //////////////////////////////////////////// ScrubError ////////////////////////////////////////////
 
 #[derive(Clone, Debug, thiserror::Error)]
