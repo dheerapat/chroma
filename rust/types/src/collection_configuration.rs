@@ -11,6 +11,7 @@ pub struct EmbeddingFunctionConfiguration {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum VectorIndexConfiguration {
     LocalHnsw(LocalHnswParameters),
     DistributedHnsw(DistributedHnswParameters),

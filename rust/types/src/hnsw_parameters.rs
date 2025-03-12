@@ -71,23 +71,20 @@ fn default_sync_threshold_distributed() -> usize {
 #[derive(Clone, PartialEq, ToSchema, Debug, Serialize, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
 pub struct DistributedHnswParameters {
-    #[serde(rename = "hnsw:space", default)]
+    #[serde(default)]
     pub space: HnswSpace,
-    #[serde(rename = "hnsw:construction_ef", default = "default_construction_ef")]
+    #[serde(default = "default_construction_ef")]
     pub construction_ef: usize,
-    #[serde(rename = "hnsw:search_ef", default = "default_search_ef_distributed")]
+    #[serde(default = "default_search_ef_distributed")]
     pub search_ef: usize,
-    #[serde(rename = "hnsw:M", default = "default_m")]
+    #[serde(default = "default_m")]
     pub m: usize,
-    #[serde(rename = "hnsw:num_threads", default = "default_num_threads")]
+    #[serde(default = "default_num_threads")]
     pub num_threads: usize,
-    #[serde(rename = "hnsw:resize_factor", default = "default_resize_factor")]
+    #[serde(default = "default_resize_factor")]
     pub resize_factor: f64,
     #[validate(range(min = 2))]
-    #[serde(
-        rename = "hnsw:sync_threshold",
-        default = "default_sync_threshold_distributed"
-    )]
+    #[serde(default = "default_sync_threshold_distributed")]
     pub sync_threshold: usize,
 }
 
@@ -102,6 +99,28 @@ impl DistributedHnswParameters {
         segment_metadata: &Option<Metadata>,
     ) -> Result<Self, HnswParametersFromSegmentError> {
         if let Some(metadata) = segment_metadata {
+            #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct LegacyMetadataDistributedHnswParameters {
+                #[serde(rename = "hnsw:space", default)]
+                pub space: HnswSpace,
+                #[serde(rename = "hnsw:construction_ef", default = "default_construction_ef")]
+                pub construction_ef: usize,
+                #[serde(rename = "hnsw:search_ef", default = "default_search_ef_distributed")]
+                pub search_ef: usize,
+                #[serde(rename = "hnsw:M", default = "default_m")]
+                pub m: usize,
+                #[serde(rename = "hnsw:num_threads", default = "default_num_threads")]
+                pub num_threads: usize,
+                #[serde(rename = "hnsw:resize_factor", default = "default_resize_factor")]
+                pub resize_factor: f64,
+                #[serde(
+                    rename = "hnsw:sync_threshold",
+                    default = "default_sync_threshold_distributed"
+                )]
+                pub sync_threshold: usize,
+            }
+
             let filtered_metadata = metadata
                 .clone()
                 .into_iter()
@@ -109,9 +128,20 @@ impl DistributedHnswParameters {
                 .collect::<Metadata>();
 
             let metadata_str = serde_json::to_string(&filtered_metadata)?;
-            let parsed = serde_json::from_str::<DistributedHnswParameters>(&metadata_str)?;
-            parsed.validate()?;
-            Ok(parsed)
+            let parsed =
+                serde_json::from_str::<LegacyMetadataDistributedHnswParameters>(&metadata_str)?;
+
+            let params = DistributedHnswParameters {
+                space: parsed.space,
+                construction_ef: parsed.construction_ef,
+                search_ef: parsed.search_ef,
+                m: parsed.m,
+                num_threads: parsed.num_threads,
+                resize_factor: parsed.resize_factor,
+                sync_threshold: parsed.sync_threshold,
+            };
+            params.validate()?;
+            Ok(params)
         } else {
             Ok(DistributedHnswParameters::default())
         }
@@ -125,23 +155,23 @@ fn default_batch_size() -> usize {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Validate, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct LocalHnswParameters {
-    #[serde(rename = "hnsw:space", default)]
+    #[serde(default)]
     pub space: HnswSpace,
-    #[serde(rename = "hnsw:construction_ef", default = "default_construction_ef")]
+    #[serde(default = "default_construction_ef")]
     pub construction_ef: usize,
-    #[serde(rename = "hnsw:search_ef", default = "default_search_ef")]
+    #[serde(default = "default_search_ef")]
     pub search_ef: usize,
-    #[serde(rename = "hnsw:M", default = "default_m")]
+    #[serde(default = "default_m")]
     pub m: usize,
-    #[serde(rename = "hnsw:num_threads", default = "default_num_threads")]
+    #[serde(default = "default_num_threads")]
     pub num_threads: usize,
-    #[serde(rename = "hnsw:resize_factor", default = "default_resize_factor")]
+    #[serde(default = "default_resize_factor")]
     pub resize_factor: f64,
     #[validate(range(min = 2))]
-    #[serde(rename = "hnsw:sync_threshold", default = "default_sync_threshold")]
+    #[serde(default = "default_sync_threshold")]
     pub sync_threshold: usize,
     #[validate(range(min = 2))]
-    #[serde(rename = "hnsw:batch_size", default = "default_batch_size")]
+    #[serde(default = "default_batch_size")]
     pub batch_size: usize,
 }
 
@@ -156,6 +186,27 @@ impl LocalHnswParameters {
         segment_metadata: &Option<Metadata>,
     ) -> Result<Self, HnswParametersFromSegmentError> {
         if let Some(metadata) = segment_metadata {
+            #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct LegacyMetadataLocalHnswParameters {
+                #[serde(rename = "hnsw:space", default)]
+                pub space: HnswSpace,
+                #[serde(rename = "hnsw:construction_ef", default = "default_construction_ef")]
+                pub construction_ef: usize,
+                #[serde(rename = "hnsw:search_ef", default = "default_search_ef")]
+                pub search_ef: usize,
+                #[serde(rename = "hnsw:M", default = "default_m")]
+                pub m: usize,
+                #[serde(rename = "hnsw:num_threads", default = "default_num_threads")]
+                pub num_threads: usize,
+                #[serde(rename = "hnsw:resize_factor", default = "default_resize_factor")]
+                pub resize_factor: f64,
+                #[serde(rename = "hnsw:sync_threshold", default = "default_sync_threshold")]
+                pub sync_threshold: usize,
+                #[serde(rename = "hnsw:batch_size", default = "default_batch_size")]
+                pub batch_size: usize,
+            }
+
             let filtered_metadata = metadata
                 .clone()
                 .into_iter()
@@ -163,9 +214,19 @@ impl LocalHnswParameters {
                 .collect::<Metadata>();
 
             let metadata_str = serde_json::to_string(&filtered_metadata)?;
-            let parsed = serde_json::from_str::<LocalHnswParameters>(&metadata_str)?;
-            parsed.validate()?;
-            Ok(parsed)
+            let parsed = serde_json::from_str::<LegacyMetadataLocalHnswParameters>(&metadata_str)?;
+            let params = LocalHnswParameters {
+                space: parsed.space,
+                construction_ef: parsed.construction_ef,
+                search_ef: parsed.search_ef,
+                m: parsed.m,
+                num_threads: parsed.num_threads,
+                resize_factor: parsed.resize_factor,
+                sync_threshold: parsed.sync_threshold,
+                batch_size: parsed.batch_size,
+            };
+            params.validate()?;
+            Ok(params)
         } else {
             Ok(LocalHnswParameters::default())
         }
