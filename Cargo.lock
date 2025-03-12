@@ -1411,6 +1411,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "chroma-cli"
+version = "0.1.0"
+dependencies = [
+ "chroma-frontend",
+ "clap",
+ "tokio",
+ "webbrowser",
+]
+
+[[package]]
 name = "chroma-config"
 version = "0.1.0"
 dependencies = [
@@ -1562,6 +1572,7 @@ dependencies = [
  "chroma-error",
  "chroma-segment",
  "chroma-sqlite",
+ "chroma-storage",
  "chroma-sysdb",
  "chroma-system",
  "chroma-tracing",
@@ -1569,6 +1580,7 @@ dependencies = [
  "futures",
  "opentelemetry",
  "proptest",
+ "prost 0.13.3",
  "rand",
  "serde",
  "serde_json",
@@ -1581,6 +1593,7 @@ dependencies = [
  "tracing",
  "tracing-opentelemetry",
  "uuid",
+ "wal3",
 ]
 
 [[package]]
@@ -1905,16 +1918,6 @@ name = "clap_lex"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
-
-[[package]]
-name = "cli"
-version = "0.1.0"
-dependencies = [
- "chroma-frontend",
- "clap",
- "tokio",
- "webbrowser",
-]
 
 [[package]]
 name = "cmsketch"
